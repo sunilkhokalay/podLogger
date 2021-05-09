@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -30,31 +32,26 @@ func main() {
 		}
 	}
 
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
+	// creates the clientSet
+	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		panic(err.Error())
 	}
 
-	wInf, err := clientset.CoreV1().Pods("default").Watch(context.TODO(),metav1.ListOptions{
-		TypeMeta:            metav1.TypeMeta{},
-		Watch:               true,
+	wInf, err := clientSet.CoreV1().Pods("").Watch(context.TODO(), metav1.ListOptions{
+		TypeMeta: metav1.TypeMeta{},
+		Watch:    true,
 	})
 
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 
 	eventChan := wInf.ResultChan()
-
+	println("Starting pod watcher...")
 	for {
-		event := <- eventChan
-		println("---------------")
-		println("Event received:-")
-		println(event.Type)
-		println(event.Object.GetObjectKind().GroupVersionKind().Group)
-		println(event.Object.GetObjectKind().GroupVersionKind().Version)
-		println(event.Object.GetObjectKind().GroupVersionKind().Kind)
-		println("---------------")
+		event := <-eventChan
+		pod := event.Object.(*v1.Pod)
+		println(fmt.Sprintf("The pod \"%s\" in \"%s\" namespace was %s", pod.Name, pod.Namespace, event.Type))
 	}
 }
